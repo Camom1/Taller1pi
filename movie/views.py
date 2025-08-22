@@ -29,36 +29,51 @@ import matplotlib.pyplot as plt
 import io, base64
 
 def statistics_view(request):
-    # Obtener todas las películas
     all_movies = Movie.objects.all()
 
-    # Conteo por año
-    movie_counts_by_year = {}
-    for movie in all_movies:
-        year = movie.year if movie.year else "None"
-        movie_counts_by_year[year] = movie_counts_by_year.get(year, 0) + 1
-
-    # Gráfica de barras
-    bar_width = 0.5
-    bar_positions = range(len(movie_counts_by_year))
+    # --- Movies per year ---
+    counts_year = {}
+    for m in all_movies:
+        y = m.year if m.year else "None"
+        counts_year[y] = counts_year.get(y, 0) + 1
 
     plt.figure()
-    plt.bar(bar_positions, list(movie_counts_by_year.values()), width=bar_width, align='center')
+    years = list(counts_year.keys())
+    vals_year = [counts_year[y] for y in years]
+    plt.bar(range(len(years)), vals_year, width=0.5, align='center')
     plt.title('Movies per year')
-    plt.xlabel('Year')
-    plt.ylabel('Number of movies')
-    plt.xticks(list(bar_positions), list(movie_counts_by_year.keys()), rotation=90)
-    plt.subplots_adjust(bottom=0.3)
+    plt.xlabel('Year'); plt.ylabel('Number of movies')
+    plt.xticks(range(len(years)), years, rotation=90)
+    plt.tight_layout()
+    buf = io.BytesIO(); plt.savefig(buf, format='png'); buf.seek(0); plt.close()
+    graphic_year = base64.b64encode(buf.getvalue()).decode('utf-8')
+    buf.close()
 
-    # Exportar a base64
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    plt.close()
+    # --- Movies per genre ---
+    counts_genre = {}
+    for m in all_movies:
+        g = (m.genre or '').strip()
+        if not g:
+            g = 'None'
+        else:
+            g = g.split(',')[0].split('/')[0].strip()
+        counts_genre[g] = counts_genre.get(g, 0) + 1
 
-    image_png = buffer.getvalue()
-    buffer.close()
-    graphic = base64.b64encode(image_png)
-    graphic = graphic.decode('utf-8')
+    plt.figure()
+    genres = list(counts_genre.keys())
+    vals_genre = [counts_genre[g] for g in genres]
+    plt.bar(range(len(genres)), vals_genre, width=0.5, align='center')
+    plt.title('Movies per genre')
+    plt.xlabel('Genre'); plt.ylabel('Number of movies')
+    plt.xticks(range(len(genres)), genres, rotation=45, ha='right')
+    plt.tight_layout()
+    buf2 = io.BytesIO(); plt.savefig(buf2, format='png'); buf2.seek(0); plt.close()
+    graphic_genre = base64.b64encode(buf2.getvalue()).decode('utf-8')
+    buf2.close()
 
-    return render(request, 'statistics.html', {'graphic': graphic})
+    return render(request, 'statistics.html', {
+        'graphic_year': graphic_year,
+        'graphic_genre': graphic_genre,
+    })
+
+
